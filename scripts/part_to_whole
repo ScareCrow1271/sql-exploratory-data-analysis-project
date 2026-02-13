@@ -1,0 +1,64 @@
+
+-- Which categories contribute the most to overall sales?
+WITH temp AS 
+(
+SELECT 
+p.category,
+SUM(f.sales_amount) AS total_sales
+FROM gold.fact_sales f 
+LEFT JOIN gold.dim_products p
+ON p.product_key = f.product_key
+GROUP BY p.category
+)
+SELECT 
+category,
+total_sales,
+SUM(total_sales) OVER() AS overall_sales,
+CONCAT(CAST(ROUND(total_sales * 100.00 / SUM(total_sales) OVER(), 2) AS DECIMAL (5, 2)), '%') AS sales_contribution
+FROM temp
+ORDER BY total_sales DESC
+
+
+ -- Which country contributes the most to overall orders?
+ WITH order_counts AS (
+	 SELECT 
+		 c.country,
+		 COUNT(f.order_number) AS total_orders
+	 FROM gold.fact_sales f
+	 LEFT JOIN gold.dim_customers c
+	 ON c.customer_key = f.customer_key
+	 WHERE country != 'unknown'
+	 GROUP BY c.country
+)
+
+SELECT 
+country,
+total_orders,
+SUM(total_orders) OVER() AS overall_orders,
+CONCAT(ROUND(CAST((total_orders) AS FLOAT) * 100 / SUM(total_orders) OVER(), 2), '%') AS order_contribution
+FROM order_counts
+ORDER BY total_orders DESC
+
+
+-- Which categories and subcategories  contribute the most to price?
+WITH overall_price AS (
+	SELECT 
+		p.category,
+		p.subcategory,
+		SUM(f.price) AS total_price
+	FROM gold.fact_sales f 
+	LEFT JOIN gold.dim_products p
+	ON p.product_key = f.product_key
+	GROUP BY p.category, p.subcategory
+)
+
+SELECT 
+category,
+subcategory,
+total_price,
+SUM(total_price) OVER() AS overall_price,
+CONCAT(ROUND(CAST((total_price) AS FLOAT) * 100 / SUM(total_price) OVER(), 2), '%') AS price_contribution
+FROM overall_price
+ORDER BY total_price DESC, category, subcategory
+
+
